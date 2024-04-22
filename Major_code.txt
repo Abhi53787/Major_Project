@@ -1,0 +1,171 @@
+Map.addLayer(ROI)
+Map.centerObject(ROI,15)
+var filtered = s2.filter(ee.Filter.bounds(ROI))
+
+                .filter(ee.Filter.date('2020-01-01','2023-12-31'))
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
+         
+                .select('B.*')
+var b2018 = filtered.median().clip(ROI)
+Map.addLayer(b2018,imageVisParam,'before') 
+var after = s2.filter(ee.Filter.bounds(ROI))
+                .filter(ee.Filter.date('2018-01-01','2020-12-31'))
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
+                .select('B.*')
+                .median()
+                .clip(ROI)
+Map.addLayer(after,imageVisParam,'after')
+
+//chennai at 2019
+
+var after_2019 = s2.filter(ee.Filter.bounds(ROI))
+                .filter(ee.Filter.date('2019-01-01','2023-12-31'))
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
+                .select('B.*')
+                .median()
+                .clip(ROI)
+Map.addLayer(after_2019,imageVisParam,'after_2019')
+var training_2019 = urban.merge(bareland).merge(water).merge(vegetation)
+var training_2019 = b2018.sampleRegions({
+  collection:training_2019 ,
+  properties:['Class'],
+  scale:15})
+  print(training)
+  
+// classification training for before
+
+var training = urban.merge(bareland).merge(water).merge(vegetation)
+var training = b2018.sampleRegions({
+  collection:training ,
+  properties:['Class'],
+  scale:15})
+  print(training)
+var classifier = ee.Classifier.smileRandomForest(50);
+var trainedClassifier = classifier.train({
+  features: training,
+  classProperty: 'Class',
+  inputProperties: b2018.bandNames()
+});
+var beforeClassified = b2018.classify(trainedClassifier)
+
+
+var training = urban.merge(bareland).merge(water).merge(vegetation)
+var training = b2018.sampleRegions({
+  collection:training ,
+  properties:['Class'],
+  scale:15})
+  print(training)
+var classifier = ee.Classifier.smileRandomForest(50);
+var trainedClassifier = classifier.train({
+  features: training,
+  classProperty: 'Class',
+  inputProperties: b2018.bandNames()
+});
+var beforeClassified = b2018.classify(trainedClassifier)
+Map.addLayer(beforeClassified,{min: 0 ,max: 3 , palette:['red','brown','blue','green']},'before Classified')
+
+// classification training for after
+var training_after = urban.merge(bareland).merge(water).merge(vegetation)
+var training_after = after.sampleRegions({
+  collection:training_after ,
+  properties:['Class'],
+  scale:15})
+  print(training_after)
+var classifier = ee.Classifier.smileRandomForest(50);
+var trainedClassifier_after = classifier.train({
+  features: training_after,
+  classProperty: 'Class',
+  inputProperties: after.bandNames()
+});
+var afterClassified = after.classify(trainedClassifier_after)
+Map.addLayer(afterClassified,{min: 0 ,max: 3 , palette:['red','brown','blue','green']},'after Classified')
+print("classifier train error matrix:", classifier.confusionMatrix());
+print("classifier train accuracy:",classifier.confusionMatrix().accuracy());
+print("classifier train kappa:", classifier.confusionMatrix().kappa());
+
+
+//change detection 
+var beforeclasses=beforeClassified.remap([0,1,2,3,4],[1,2,3,4,5])
+var afterclasses =afterClassified.remap([0,1,2,3,4],[1,2,3,4,5])
+
+// 
+
+// show all change area
+var changed=afterclasses.subtract(beforeclasses).neq(0)
+// white == no changes and red==changes happens in the region 
+Map.addLayer(changed,{min:0 , max:1, palette:['white','red']},'Change')
+
+
+
+
+
+
+
+"The below lines of code is prototype"
+var a2020 = s2.filter(ee.Filter.bounds(ROI))
+                .filter(ee.Filter.date('2020-01-01','2020-07-01'))
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
+                .select('B.*')
+                .median()
+                .clip(ROI)
+Map.addLayer(a2020,imageVisParam,'a2020')
+
+
+
+var a2021 = s2.filter(ee.Filter.bounds(ROI))
+                .filter(ee.Filter.date('2021-01-01','2021-07-01'))
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
+                .select('B.*')
+                .median()
+                .clip(ROI)
+Map.addLayer(a2021,imageVisParam,'a2021')
+
+
+var a2022 = s2.filter(ee.Filter.bounds(ROI))
+                .filter(ee.Filter.date('2022-01-01','2022-07-01'))
+                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
+                .select('B.*')
+                .median()
+                .clip(ROI)
+Map.addLayer(a2022,imageVisParam,'a2022')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// var afterClassified = after.classify(classifier)
+
+ 
+
+// //after
+// var training_after = urban_after.merge(bareland_after).merge(water_after).merge(vegetation_after)
+
+// var training_after = before.sampleRegions({
+//   collection:training_after ,
+//   properties:['Class'],
+//   scale:15})
+//   print(training_after)
+// var classifier_after = ee.Classifier.smileRandomForest(50);
+
+// var trainedClassifier_after = classifier.train({
+//   features: training_after,
+//   classProperty: 'Class',
+//   inputProperties: before.bandNames()
+// });
+// var afterClassified = after.classify(trainedClassifier_after)
+
+// Map.addLayer(afterClassified,{min: 0 ,max: 3 , palette:['red','brown','blue','green']},'after Classified')
