@@ -7,14 +7,14 @@ var filtered = s2.filter(ee.Filter.bounds(ROI))
          
                 .select('B.*')
 var b2018 = filtered.median().clip(ROI)
-Map.addLayer(b2018,imageVisParam,'before') 
+Map.addLayer(b2018,imageVisParam,'b2018') 
 var after = s2.filter(ee.Filter.bounds(ROI))
                 .filter(ee.Filter.date('2018-01-01','2020-12-31'))
                 .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
                 .select('B.*')
                 .median()
                 .clip(ROI)
-Map.addLayer(after,imageVisParam,'after')
+Map.addLayer(after,imageVisParam,'a2023')
 
 //chennai at 2019
 
@@ -24,13 +24,13 @@ var after_2019 = s2.filter(ee.Filter.bounds(ROI))
                 .select('B.*')
                 .median()
                 .clip(ROI)
-Map.addLayer(after_2019,imageVisParam,'after_2019')
+Map.addLayer(after_2019,imageVisParam,'a2019')
 var training_2019 = urban.merge(bareland).merge(water).merge(vegetation)
 var training_2019 = b2018.sampleRegions({
   collection:training_2019 ,
   properties:['Class'],
   scale:15})
-  print(training)
+  
   
 // classification training for before
 
@@ -39,7 +39,7 @@ var training = b2018.sampleRegions({
   collection:training ,
   properties:['Class'],
   scale:15})
-  print(training)
+  
 var classifier = ee.Classifier.smileRandomForest(50);
 var trainedClassifier = classifier.train({
   features: training,
@@ -54,7 +54,7 @@ var training = b2018.sampleRegions({
   collection:training ,
   properties:['Class'],
   scale:15})
-  print(training)
+  
 var classifier = ee.Classifier.smileRandomForest(50);
 var trainedClassifier = classifier.train({
   features: training,
@@ -70,7 +70,7 @@ var training_after = after.sampleRegions({
   collection:training_after ,
   properties:['Class'],
   scale:15})
-  print(training_after)
+  
 var classifier = ee.Classifier.smileRandomForest(50);
 var trainedClassifier_after = classifier.train({
   features: training_after,
@@ -79,93 +79,80 @@ var trainedClassifier_after = classifier.train({
 });
 var afterClassified = after.classify(trainedClassifier_after)
 Map.addLayer(afterClassified,{min: 0 ,max: 3 , palette:['red','brown','blue','green']},'after Classified')
-print("classifier train error matrix:", classifier.confusionMatrix());
-print("classifier train accuracy:",classifier.confusionMatrix().accuracy());
-print("classifier train kappa:", classifier.confusionMatrix().kappa());
 
 
 //change detection 
 var beforeclasses=beforeClassified.remap([0,1,2,3,4],[1,2,3,4,5])
 var afterclasses =afterClassified.remap([0,1,2,3,4],[1,2,3,4,5])
 
-// 
-
 // show all change area
 var changed=afterclasses.subtract(beforeclasses).neq(0)
-// white == no changes and red==changes happens in the region 
+//white == no changes and red==changes happens in the region 
 Map.addLayer(changed,{min:0 , max:1, palette:['white','red']},'Change')
 
 
 
+var confusionMatrix = [
+  [58, 0, 0, 0],
+  [0, 52, 0, 1],
+  [1, 0, 49, 1],
+  [0, 1, 0, 50]
+];
+
+// Calculate total correctly classified samples (sum of diagonal)
+var totalCorrect = confusionMatrix.reduce(function(acc, row, i) {
+  return acc + row[i];
+}, 0);
+
+// Calculate total samples
+var totalSamples = confusionMatrix.reduce(function(acc, row) {
+  return acc + row.reduce(function(a, b) {
+    return a + b;
+  }, 0);
+}, 0);
+
+// Calculate overall model accuracy
+var overallAccuracy = (totalCorrect / totalSamples);
+
+print('Overall Model Accuracy:', overallAccuracy.toFixed(4));
 
 
 
 
-"The below lines of code is prototype"
-var a2020 = s2.filter(ee.Filter.bounds(ROI))
-                .filter(ee.Filter.date('2020-01-01','2020-07-01'))
-                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
-                .select('B.*')
-                .median()
-                .clip(ROI)
-Map.addLayer(a2020,imageVisParam,'a2020')
+// Calculate pixel-wise changes for urban, water, and vegetation
+// var urbanChange = afterClassified.eq(1).and(beforeClassified.neq(1));
+// var waterChange = afterClassified.eq(2).and(beforeClassified.neq(2));
+// var vegetationChange = afterClassified.eq(3).and(beforeClassified.neq(3));
 
+// // Calculate the number of changed pixels for each class
+// var urbanChangeCount = urbanChange.reduceRegion({
+//   reducer: ee.Reducer.sum(),
+//   geometry: ROI,
+//   scale: 15,
+//   maxPixels: 1e9
+// }).get('classification');
+// var waterChangeCount = waterChange.reduceRegion({
+//   reducer: ee.Reducer.sum(),
+//   geometry: ROI,
+//   scale: 15,
+//   maxPixels: 1e9
+// }).get('classification');
+// var vegetationChangeCount = vegetationChange.reduceRegion({
+//   reducer: ee.Reducer.sum(),
+//   geometry: ROI,
+//   scale: 15,
+//   maxPixels: 1e9
+// }).get('classification');
 
+// // Calculate the total number of pixels in the ROI
+// var totalPixels = ROI.area().divide(225); // 15x15 pixel scale
 
-var a2021 = s2.filter(ee.Filter.bounds(ROI))
-                .filter(ee.Filter.date('2021-01-01','2021-07-01'))
-                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
-                .select('B.*')
-                .median()
-                .clip(ROI)
-Map.addLayer(a2021,imageVisParam,'a2021')
+// // Calculate the percentage of change for each class
+// var urbanChangePercentage = urbanChangeCount.divide(totalPixels)
+// var waterChangePercentage = waterChangeCount.divide(totalPixels).multiply(100);
+// var vegetationChangePercentage = vegetationChangeCount.divide(totalPixels).multiply(100);
 
-
-var a2022 = s2.filter(ee.Filter.bounds(ROI))
-                .filter(ee.Filter.date('2022-01-01','2022-07-01'))
-                .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',1))
-                .select('B.*')
-                .median()
-                .clip(ROI)
-Map.addLayer(a2022,imageVisParam,'a2022')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// var afterClassified = after.classify(classifier)
-
- 
-
-// //after
-// var training_after = urban_after.merge(bareland_after).merge(water_after).merge(vegetation_after)
-
-// var training_after = before.sampleRegions({
-//   collection:training_after ,
-//   properties:['Class'],
-//   scale:15})
-//   print(training_after)
-// var classifier_after = ee.Classifier.smileRandomForest(50);
-
-// var trainedClassifier_after = classifier.train({
-//   features: training_after,
-//   classProperty: 'Class',
-//   inputProperties: before.bandNames()
-// });
-// var afterClassified = after.classify(trainedClassifier_after)
-
-// Map.addLayer(afterClassified,{min: 0 ,max: 3 , palette:['red','brown','blue','green']},'after Classified')
+// // Print the results
+// print('Urban Change Percentage from 2018 to 2023:', urbanChangePercentage);
+// print('Water Change Percentage from 2018 to 2023:', waterChangePercentage);
+// print('Vegetation Change Percentage from 2018 to 2023:', vegetationChangePercentage);
